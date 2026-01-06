@@ -210,3 +210,41 @@ def update_profile(request):
         'user': UserSerializer(user).data,
         'message': '更新成功'
     })
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def test_login(request):
+    test_user_id = request.data.get('user_id')
+    test_openid = request.data.get('openid')
+    
+    if not test_openid:
+        return Response({'error': '需要提供测试用户标识'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    user, created = User.objects.get_or_create(
+        openid=test_openid,
+        defaults={
+            'username': test_openid,
+            'nickname': f'测试用户{test_openid[-1]}'
+        }
+    )
+    
+    if created:
+        print(f'创建测试用户: {user.nickname}, openid: {test_openid}')
+    
+    token, _ = Token.objects.get_or_create(user=user)
+    
+    couple = None
+    try:
+        couple = Couple.objects.get(user1=user)
+    except Couple.DoesNotExist:
+        try:
+            couple = Couple.objects.get(user2=user)
+        except Couple.DoesNotExist:
+            pass
+    
+    return Response({
+        'token': token.key,
+        'user': UserSerializer(user).data,
+        'couple': CoupleSerializer(couple).data if couple else None,
+        'is_test_user': True
+    })

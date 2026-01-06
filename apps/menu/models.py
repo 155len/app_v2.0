@@ -25,6 +25,8 @@ class MenuItem(models.Model):
     category = models.ForeignKey(MenuCategory, on_delete=models.CASCADE, related_name='items', verbose_name='所属分类')
     sort_order = models.IntegerField(default=0, verbose_name='排序')
     is_available = models.BooleanField(default=True, verbose_name='是否上架')
+    couple = models.ForeignKey(Couple, on_delete=models.CASCADE, null=True, blank=True, verbose_name='所属情侣')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True, verbose_name='所属用户')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
     

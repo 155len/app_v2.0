@@ -1,11 +1,26 @@
 from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.authtoken.models import Token
 from .models import Memo, MemoItem
 from .serializers import MemoSerializer, MemoDetailSerializer, MemoItemSerializer
 from apps.user.models import Couple
 
+def get_user_from_token(request):
+    auth_header = request.headers.get('Authorization', '')
+    if auth_header.startswith('Token '):
+        token_key = auth_header[6:]
+        try:
+            token = Token.objects.get(key=token_key)
+            return token.user
+        except Token.DoesNotExist:
+            pass
+    return None
+
 def get_user_couple(user):
+    if not user:
+        return None
     try:
         return Couple.objects.get(user1=user)
     except Couple.DoesNotExist:
@@ -15,34 +30,40 @@ def get_user_couple(user):
             return None
 
 @api_view(['GET', 'POST'])
+@permission_classes([AllowAny])
 def memos(request):
+    user = get_user_from_token(request)
+    couple = get_user_couple(user)
+    
     if request.method == 'GET':
-        couple = get_user_couple(request.user)
         if couple:
             memos = Memo.objects.filter(couple=couple)
         else:
-            # 未绑定情侣关系的用户返回自己的备忘录
-            memos = Memo.objects.filter(user=request.user, couple__isnull=True)
+            memos = Memo.objects.filter(user=user, couple__isnull=True) if user else []
         serializer = MemoSerializer(memos, many=True)
         return Response(serializer.data)
     
     elif request.method == 'POST':
-        couple = get_user_couple(request.user)
+        couple = get_user_couple(user)
         serializer = MemoSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save(user=request.user, couple=couple)
+            serializer.save(user=user, couple=couple)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET', 'PUT', 'DELETE'])
+@permission_classes([AllowAny])
 def memo_detail(request, pk):
-    couple = get_user_couple(request.user)
+    user = get_user_from_token(request)
+    couple = get_user_couple(user)
     
     try:
         if couple:
             memo = Memo.objects.get(pk=pk, couple=couple)
         else:
-            memo = Memo.objects.get(pk=pk, user=request.user, couple__isnull=True)
+            memo = Memo.objects.get(pk=pk, user=user, couple__isnull=True) if user else None
+        if not memo:
+            return Response({'error': '备忘录不存在'}, status=status.HTTP_404_NOT_FOUND)
     except Memo.DoesNotExist:
         return Response({'error': '备忘录不存在'}, status=status.HTTP_404_NOT_FOUND)
     
@@ -62,14 +83,18 @@ def memo_detail(request, pk):
         return Response({'success': True})
 
 @api_view(['POST'])
+@permission_classes([AllowAny])
 def add_memo_item(request, pk):
-    couple = get_user_couple(request.user)
+    user = get_user_from_token(request)
+    couple = get_user_couple(user)
     
     try:
         if couple:
             memo = Memo.objects.get(pk=pk, couple=couple)
         else:
-            memo = Memo.objects.get(pk=pk, user=request.user, couple__isnull=True)
+            memo = Memo.objects.get(pk=pk, user=user, couple__isnull=True) if user else None
+        if not memo:
+            return Response({'error': '备忘录不存在'}, status=status.HTTP_404_NOT_FOUND)
     except Memo.DoesNotExist:
         return Response({'error': '备忘录不存在'}, status=status.HTTP_404_NOT_FOUND)
     
@@ -80,14 +105,18 @@ def add_memo_item(request, pk):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['PUT', 'DELETE'])
+@permission_classes([AllowAny])
 def memo_item_detail(request, pk, item_id):
-    couple = get_user_couple(request.user)
+    user = get_user_from_token(request)
+    couple = get_user_couple(user)
     
     try:
         if couple:
             memo = Memo.objects.get(pk=pk, couple=couple)
         else:
-            memo = Memo.objects.get(pk=pk, user=request.user, couple__isnull=True)
+            memo = Memo.objects.get(pk=pk, user=user, couple__isnull=True) if user else None
+        if not memo:
+            return Response({'error': '备忘录不存在'}, status=status.HTTP_404_NOT_FOUND)
         item = MemoItem.objects.get(pk=item_id, memo=memo)
     except (Memo.DoesNotExist, MemoItem.DoesNotExist):
         return Response({'error': '备忘录或事项不存在'}, status=status.HTTP_404_NOT_FOUND)

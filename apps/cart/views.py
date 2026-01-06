@@ -36,7 +36,7 @@ def add_to_cart(request):
     if not user:
         return Response({'error': '需要登录'}, status=status.HTTP_401_UNAUTHORIZED)
     
-    cart, _ = Cart.objects.get_or_create(user=request.user)
+    cart, _ = Cart.objects.get_or_create(user=user)
     item_id = request.data.get('item_id')
     quantity = request.data.get('quantity', 1)
     

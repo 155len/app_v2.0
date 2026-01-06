@@ -126,10 +126,16 @@ def items(request):
                 if couple:
                     MenuCategory.objects.get(pk=category.id, couple=couple)
                 elif user:
-                    MenuCategory.objects.get(pk=category.id, user=request.user)
+                    MenuCategory.objects.get(pk=category.id, user=user)
                 else:
                     return Response({'error': '需要登录'}, status=status.HTTP_401_UNAUTHORIZED)
-                serializer.save(category=category)
+                
+                if couple:
+                    serializer.save(category=category, couple=couple)
+                elif user:
+                    serializer.save(category=category, user=user)
+                else:
+                    serializer.save(category=category)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             except MenuCategory.DoesNotExist:
                 return Response({'error': '分类不存在'}, status=status.HTTP_400_BAD_REQUEST)
@@ -145,7 +151,7 @@ def item_detail(request, pk):
         if couple:
             item = MenuItem.objects.get(pk=pk, category__couple=couple)
         elif user:
-            item = MenuItem.objects.get(pk=pk, category__user=request.user)
+            item = MenuItem.objects.get(pk=pk, category__user=user)
         else:
             return Response({'error': '商品不存在'}, status=status.HTTP_404_NOT_FOUND)
     except MenuItem.DoesNotExist:
@@ -164,7 +170,7 @@ def item_detail(request, pk):
                     if couple:
                         MenuCategory.objects.get(pk=category.id, couple=couple)
                     elif user:
-                        MenuCategory.objects.get(pk=category.id, user=request.user)
+                        MenuCategory.objects.get(pk=category.id, user=user)
                 except MenuCategory.DoesNotExist:
                     return Response({'error': '分类不存在'}, status=status.HTTP_400_BAD_REQUEST)
             serializer.save()
